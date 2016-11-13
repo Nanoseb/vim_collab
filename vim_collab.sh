@@ -51,7 +51,10 @@ check_srv () {
     # file on ftp have been updated
     cp "$file_temp" "$file_prevsrv" 
     merge
+  else
+    send_file 
   fi
+
 }
 
 merge () {
