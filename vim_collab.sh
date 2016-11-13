@@ -9,6 +9,7 @@ else
 fi
 file_temp=$file".temp"
 file_temp_diff=$file".diff"
+file_html=$file".html"
 file_prevsrv=$file".prevsrv"
 
 ftp="ftp://ftp.website.org/folder/$file"
@@ -29,6 +30,14 @@ send_file () {
     cp "$file" "$file_prevsrv" 
     tstamp_srv=$(date +%s)
     curl -s --ssl -T "$file" "$ftp" --user "$user":"$pass" 
+
+    if [ "$markdown2html" ]
+    then
+      echo MD 2 HTML
+      pandoc --from markdown_github --to html --standalone "$file" > "$file_html"
+      curl -s --ssl -T "$file_html" "$ftp".html --user "$user":"$pass" 
+    fi
+
   fi
 }
 
@@ -129,3 +138,4 @@ check_srv >> "$logfile" 2>&1
 rm "$file_temp"
 rm "$file_prevsrv" 
 rm "$file_temp_diff"
+rm "$file_html"
