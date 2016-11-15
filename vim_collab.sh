@@ -7,16 +7,17 @@ then
 else
   file='defaultfile'
 fi
-file_temp=$file".temp"
-file_temp_diff=$file".diff"
-file_html=$file".html"
-file_prevsrv=$file".prevsrv"
+file_temp="$file.temp"
+file_temp_diff="$file.diff"
+file_prevsrv="$file.prevsrv"
+servername="${file}_vimcollab"
 
 ftp="ftp://ftp.website.org/folder/$file"
 user="USERNAME"
 pass='PASSWORD'
 dtime="5"
 logfile="/dev/null"
+md2html='true'
 
 tstamp_srv=$(date +%s)
 tstamp_local=$(date +%s)
@@ -31,18 +32,18 @@ send_file () {
     tstamp_srv=$(date +%s)
     curl -s --ssl -T "$file" "$ftp" --user "$user":"$pass" 
 
-    if [ "$markdown2html" ]
+    if [ "$md2html" = "true" ]
     then
-      echo MD 2 HTML
-      pandoc --from markdown_github --to html --standalone "$file" > "$file_html"
-      curl -s --ssl -T "$file_html" "$ftp".html --user "$user":"$pass" 
+      echo MD2HTML
+      pandoc --from markdown_github --to html --standalone "$file"  | \
+        curl -s --ssl -T /dev/stdin "$ftp".html --user "$user":"$pass" 
     fi
 
   fi
 }
 
 get_file () {
-  echo GET FILE 0
+  echo GET_FILE_CHECK
   head=$(curl -s -R --ssl -u "$user":"$pass" "$ftp" --head)
   if [ "$prev_head" != "$head" ]
   then
@@ -57,7 +58,7 @@ check_srv () {
   diff=$(diff "$file_prevsrv" "$file_temp")
   if [ "$diff" ]
   then
-    # file on ftp have been updated
+    # file on ftp has been updated
     cp "$file_temp" "$file_prevsrv" 
     merge
   else
@@ -74,8 +75,7 @@ merge () {
   then
     echo MERGE 1
     # issue, merging needed
-
-    # vim --servername "$file" --remote-send '<ESC>:w<CR>li'
+    # vim --servername "$servername" --remote-send '<ESC>:w<CR>li'
     diff=$(diff -D "EDITED" "$file" "$file_temp" > "$file_temp_diff")
     cat $file_temp_diff
     bool=$(grep '#else /\* EDITED \*/' < "$file_temp_diff") 
@@ -84,24 +84,24 @@ merge () {
     then
       echo MERGE 1.1
       cp "$file_temp_diff" "$file"
-      vim --servername "$file" --remote-send '<ESC>:edit!<CR>li'
+      vim --servername "$servername" --remote-send '<ESC>:edit!<CR>li'
     else
       echo MERGE 1.2
       grep -v "^#.*EDITED" < "$file_temp_diff" > "$file"
-      vim --servername "$file" --remote-send '<ESC>:edit!<CR>li'
+      vim --servername "$servername" --remote-send '<ESC>:edit!<CR>li'
     fi
     send_file 
   else
     echo MERGE 2
     # fine we can merge easily
     cp "$file_temp" "$file"
-    vim --servername "$file" --remote-send '<ESC>:edit!<CR>li'
+    vim --servername "$servername" --remote-send '<ESC>:edit!<CR>li'
   fi
 }
 
 
 run () {
-  vim --servername "$file" "$file" 
+  vim --servername "$servername" "$file" 
 }
 
 init () {
@@ -135,7 +135,8 @@ run
 kill $pid  >> "$logfile" 2>&1
 check_srv >> "$logfile" 2>&1
 
-rm "$file_temp"
-rm "$file_prevsrv" 
-rm "$file_temp_diff"
-rm "$file_html"
+rm "$file_temp"  >> "$logfile" 2>&1
+rm "$file_prevsrv"  >> "$logfile" 2>&1
+rm -f "$file_temp_diff" >> "$logfile" 2>&1
+rm "$file" >> "$logfile" 2>&1
+
