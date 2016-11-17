@@ -15,7 +15,7 @@ servername="${file}_vimcollab"
 ftp="ftp://ftp.website.org/folder/$file"
 user="USERNAME"
 pass='PASSWORD'
-dtime="5"
+dtime="2"
 logfile="/dev/null"
 md2html='true'
 
@@ -29,18 +29,17 @@ send_file () {
   then
     echo SEND_FILE
     cp "$file" "$file_prevsrv" 
-    tstamp_srv=$(date +%s)
     curl -s --ssl -T "$file" "$ftp" --user "$user":"$pass" 
 
     if [ "$md2html" = "true" ]
     then
       echo MD2HTML
       pandoc --from markdown_github --to html --standalone "$file"  | \
-        curl -s --ssl -T /dev/stdin "$ftp".html --user "$user":"$pass" 
+        curl -s --ssl -T /dev/stdin "$ftp".html --user "$user":"$pass" &
     fi
-
   fi
 }
+
 
 get_file () {
   echo GET_FILE_CHECK
@@ -49,37 +48,40 @@ get_file () {
   then
     echo GET_FILE
     curl -s -R --ssl -u "$user":"$pass" "$ftp" -o "$file_temp"
+    cp "$file_temp" "$file_prevsrv" 
+    tstamp_srvprev=$tstamp_srv
+    tstamp_srv=$(date +%s)
     prev_head="$head"
+    return 0
+  else
+    return 1
   fi
 }
 
+
 check_srv () {
-  get_file
-  diff=$(diff "$file_prevsrv" "$file_temp")
-  if [ "$diff" ]
+  if get_file
   then
     # file on ftp has been updated
-    cp "$file_temp" "$file_prevsrv" 
     merge
   else
     send_file 
   fi
-
 }
+
 
 merge () {
   echo MERGE
   tstamp_local=$(stat -c %Y "$file")
 
-  if [ "$tstamp_local" -lt "$tstamp_srv" ]
+  if [ "$tstamp_local" -lt "$tstamp_srv" ] && [ "$tstamp_srvprev" -lt "$tstamp_local" ]
   then
     echo MERGE 1
     # issue, merging needed
-    # vim --servername "$servername" --remote-send '<ESC>:w<CR>li'
+    #vim --servername "$servername" --remote-send '<ESC>:w<CR>li'
     diff=$(diff -D "EDITED" "$file" "$file_temp" > "$file_temp_diff")
-    cat $file_temp_diff
-    bool=$(grep '#else /\* EDITED \*/' < "$file_temp_diff") 
 
+    bool=$(grep '#else /\* EDITED \*/' < "$file_temp_diff") 
     if [ "$bool" ]
     then
       echo MERGE 1.1
@@ -104,6 +106,7 @@ run () {
   vim --servername "$servername" "$file" 
 }
 
+
 init () {
   head=$(curl -s -R --ssl -u "$user":"$pass" "$ftp" --head)
   if [ "$head" ]
@@ -120,6 +123,7 @@ init () {
   fi
 }
 
+
 loop () {
   while true;
   do
@@ -127,6 +131,7 @@ loop () {
     check_srv >> "$logfile" 2>&1
   done
 }
+
 
 init >> "$logfile" 2>&1
 loop &
