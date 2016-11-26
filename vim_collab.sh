@@ -35,7 +35,7 @@ send_file () {
     then
       echo MD2HTML
       pandoc --from markdown_github --to html --standalone "$file"  | \
-        curl -s --ssl -T /dev/stdin "$ftp".html --user "$user":"$pass" &
+        curl -s --ssl -T /dev/stdin "$ftp".html --user "$user":"$pass"
     fi
   fi
 }
