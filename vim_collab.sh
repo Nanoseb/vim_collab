@@ -144,5 +144,5 @@ check_srv >> "$logfile" 2>&1
 rm "$file_temp"  >> "$logfile" 2>&1
 rm "$file_prevsrv"  >> "$logfile" 2>&1
 rm -f "$file_temp_diff" >> "$logfile" 2>&1
-rm "$file" >> "$logfile" 2>&1
+#rm "$file" >> "$logfile" 2>&1
 
