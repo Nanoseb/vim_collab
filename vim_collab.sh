@@ -10,7 +10,7 @@ fi
 file_temp="$file.temp"
 file_temp_diff="$file.diff"
 file_prevsrv="$file.prevsrv"
-servername="${file}_vimcollab"
+servername="${file}_vimcollab_$(date +%s)"
 
 ftp="ftp://ftp.website.org/folder/$file"
 user="USERNAME"
@@ -30,6 +30,7 @@ send_file () {
     echo SEND_FILE
     cp "$file" "$file_prevsrv" 
     curl -s --ssl -T "$file" "$ftp" --user "$user":"$pass" 
+    prev_head=$(curl -s -R --ssl -u "$user":"$pass" "$ftp" --head)
 
     if [ "$md2html" = "true" ]
     then
